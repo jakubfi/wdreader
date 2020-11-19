@@ -1,7 +1,6 @@
-#!/usr/bin/python
-# -*- coding: UTF-8 -*-
+#!/usr/bin/env python3
 
-#  Copyright (c) 2013 Jakub Filipowicz <jakubf@gmail.com>
+#  Copyright (c) 2013, 2020 Jakub Filipowicz <jakubf@gmail.com>
 #
 #  This program is free software; you can redistribute it and/or modify
 #  it under the terms of the GNU General Public License as published by
@@ -25,53 +24,32 @@ from mfm import *
 
 # ------------------------------------------------------------------------
 def process_file(file_name):
-    try:
-        track = Track(file_name, MFMClockGen(11, 2, 0), SectorMERA, 17, 512)
-        track.analyze()
-    except Exception as e:
-        print("Cannot load track {} for analysis: {}".format(file_name, e))
 
-    # write sector image to a file
-    out_file = file_name.replace(".wds", ".img")
-    outf = open(out_file, "wb")
-    for sector in track:
-        outf.write(bytes(sector))
-    outf.close()
-    print("%s: %d samples, %d clocks (period: %8.5f) %d sectors -> %s" % (re.sub(".*/", "", file_name), len(track.data.samples), len(track.data.data), track.data.period(), len(track), re.sub(".*/", "", out_file)))
+    track = Track(file_name, MFMClockGen(11, 2, 0), SectorMERA, 17, 512)
+    track.analyze()
+
+    # write track image to a file
+    with open(file_name.replace(".wds", ".img"), "wb") as outf:
+        for sector in track:
+            outf.write(bytes(sector))
+
+    print("{}: clock period: {:.4f} samples, {} sectors".format(
+        re.sub(".*/", "", file_name),
+        track.data.period(),
+        len(track)
+    ))
 
 
 # ------------------------------------------------------------------------
 # ---- MAIN --------------------------------------------------------------
 # ------------------------------------------------------------------------
 
-session_name = None
-file_name = None
-heads = [0, 1, 2, 3]
-
-# parse command line
-
-if len(sys.argv) < 2:
-    print("Usage: wda2.py <filename.wds> | <session_name [head]>")
+if len(sys.argv) != 2:
+    print("Usage: wda2.py <filename.wds>")
     sys.exit(1)
-if sys.argv[1].endswith(".wds"):
-    file_name = sys.argv[1]
-else:
-    session_name = sys.argv[1]
-    if len(sys.argv) == 3:
-        heads = [int(x) for x in sys.argv[2].split(',')]
 
-# single-file run
-if file_name is not None:
-    print("Running analysis on single file: %s" % file_name)
-    process_file(file_name)
+file_name = sys.argv[1]
 
-# session run
-else:
-    print("Running analysis on WDS session: %s, heads: %s" % (session_name, ','.join([str(x) for x in heads])))
-    for cylinder in range(615):
-        for head in heads:
-            file_name = "%s--1--%03d--%d.wds" % (session_name, cylinder, head)
-            process_file(file_name)
-
+process_file(file_name)
 
 # vim: tabstop=4 expandtab shiftwidth=4 softtabstop=4

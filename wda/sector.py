@@ -1,4 +1,4 @@
-#  Copyright (c) 2013 Jakub Filipowicz <jakubf@gmail.com>
+#  Copyright (c) 2013, 2020 Jakub Filipowicz <jakubf@gmail.com>
 #
 #  This program is free software; you can redistribute it and/or modify
 #  it under the terms of the GNU General Public License as published by
@@ -216,7 +216,7 @@ class SectorWD:
 
     # --------------------------------------------------------------------
     def callback_head_a1(self, arg):
-        self.crc_head_buf = [ 0xa1 ]
+        self.crc_head_buf = [0xa1]
         self.last_bit = 1
         
     # --------------------------------------------------------------------
@@ -224,16 +224,8 @@ class SectorWD:
         self.crc_head_buf += arg
         self.last_bit = arg[len(arg)-1] & 1
 
-        if arg[0] == 0xfe:
-            cyl_msb = 0
-        elif arg[0] == 0xff:
-            cyl_msb = 256
-        elif arg[0] == 0xfc:
-            cyl_msb = 512
-        elif arg[0] == 0xfd:
-            cyl_msb = 768
-        self.cylinder = cyl_msb + arg[1]
-
+        cyls_msb = {0xfe: 0, 0xff: 256, 0xfc: 512, 0xfd: 768}
+        self.cylinder = cyls_msb[arg[0]] + arg[1]
         self.head = arg[2] & 0b00000111
         self.sector_size = arg[2] & 0b01100000
         if arg[2] & 0b10000000:
@@ -243,13 +235,13 @@ class SectorWD:
     # --------------------------------------------------------------------
     def callback_head_crc(self, arg):
         crc_read = arg[0]*256 + arg[1]
-        crc_computed = self.crc16_alg.bit_by_bit_fast(self.crc_head_buf)
+        crc_computed = self.crc16_alg.table_driven(''.join([chr(x) for x in self.crc_head_buf]))
         if crc_read == crc_computed:
             self.head_crc_ok = True
 
     # --------------------------------------------------------------------
     def callback_data_a1(self, arg):
-        self.crc_data_buf = [ 0xa1 ]
+        self.crc_data_buf = [0xa1]
         self.last_bit = 1
         
     # --------------------------------------------------------------------
@@ -266,7 +258,7 @@ class SectorWD:
     # --------------------------------------------------------------------
     def callback_data_crc(self, arg):
         crc_read = arg[0]*16777216 + arg[1]*65536 + arg[2]*256 + arg[3]
-        crc_computed = self.crc32_alg.table_driven(self.crc_data_buf)
+        crc_computed = self.crc32_alg.table_driven(''.join([chr(x) for x in self.crc_data_buf]))
         if crc_read == crc_computed:
             self.data_crc_ok = True
         
@@ -343,7 +335,7 @@ class SectorMERA:
 
     # --------------------------------------------------------------------
     def callback_head_a1(self, arg):
-        self.crc_head_buf = [ 0xa1 ]
+        self.crc_head_buf = [0xa1]
         self.last_bit = 1
         
     # --------------------------------------------------------------------
@@ -351,18 +343,11 @@ class SectorMERA:
         self.crc_head_buf += arg
         self.last_bit = arg[len(arg)-1] & 1
 
-        if arg[0] == 0xfe:
-            cyl_msb = 0
-        elif arg[0] == 0xff:
-            cyl_msb = 256
-        elif arg[0] == 0xfc:
-            cyl_msb = 512
-        elif arg[0] == 0xfd:
-            cyl_msb = 768
-        self.cylinder = cyl_msb + arg[1]
-
+        cyl_msbs = {0xfe: 0, 0xff: 256, 0xfc: 512, 0xfd: 768}
+        self.cylinder = cyl_msbs[arg[0]] + arg[1]
         self.head = arg[2] & 0b00000111
         self.sector_size = arg[2] & 0b01100000
+
         if arg[2] & 0b10000000:
             self.bad = True
         self.sector = arg[3]
@@ -370,13 +355,13 @@ class SectorMERA:
     # --------------------------------------------------------------------
     def callback_head_crc(self, arg):
         crc_read = arg[0]*256 + arg[1]
-        crc_computed = self.crc16_alg.bit_by_bit_fast(''.join([chr(x) for x in self.crc_head_buf]))
+        crc_computed = self.crc16_alg.table_driven(''.join([chr(x) for x in self.crc_head_buf]))
         if crc_read == crc_computed:
             self.head_crc_ok = True
 
     # --------------------------------------------------------------------
     def callback_data_a1(self, arg):
-        self.crc_data_buf = [ 0xa1 ]
+        self.crc_data_buf = [0xa1]
         self.last_bit = 1
         
     # --------------------------------------------------------------------

@@ -1,4 +1,4 @@
-#  Copyright (c) 2013 Jakub Filipowicz <jakubf@gmail.com>
+#  Copyright (c) 2013, 2020 Jakub Filipowicz <jakubf@gmail.com>
 #
 #  This program is free software; you can redistribute it and/or modify
 #  it under the terms of the GNU General Public License as published by
@@ -27,7 +27,7 @@ class MFMData:
 
     # --------------------------------------------------------------------
     def period(self):
-        return float(len(self.samples)) / len(self.data)
+        return len(self.samples) / len(self.data)
 
     # --------------------------------------------------------------------
     def __iter__(self):
