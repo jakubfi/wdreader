@@ -24,33 +24,24 @@ class WDSFile:
         self.data = wds_f.read()
         wds_f.close()
 
-        self.byte_pos = 0
-        self.bit_pos = 7
+        self.bits = []
+        self.extract()
+
+    # --------------------------------------------------------------------
+    def extract(self):
+        bitorder = [x for x in reversed(range(0, 8))]
+        self.bits = [
+            (b >> pos) & 1
+            for b in self.data
+            for pos in bitorder
+        ]
 
     # --------------------------------------------------------------------
     def __iter__(self):
-        self.byte_pos = 0
-        self.bit_pos = 7
-        return self
+        return iter(self.bits)
 
     # --------------------------------------------------------------------
     def __len__(self):
-        return len(self.data)*8
-
-    # --------------------------------------------------------------------
-    def __next__(self):
-        if self.byte_pos >= len(self.data):
-            raise StopIteration
-        else:
-            v = (self.data[self.byte_pos] >> self.bit_pos) & 1
-
-            if self.bit_pos == 0:
-                self.bit_pos = 7
-                self.byte_pos += 1
-            else:
-                self.bit_pos -= 1
-
-            return v
-
+        return len(self.bits)
 
 # vim: tabstop=4 expandtab shiftwidth=4 softtabstop=4
