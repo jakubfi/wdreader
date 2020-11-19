@@ -28,16 +28,16 @@ def process_file(file_name):
     try:
         track = Track(file_name, MFMClockGen(11, 2, 0), SectorMERA, 17, 512)
         track.analyze()
-    except Exception, e:
-        print "Cannot load track %s for analysis. Error: %s" % (file_name, str(e))
+    except Exception as e:
+        print("Cannot load track {} for analysis: {}".format(file_name, e))
 
     # write sector image to a file
     out_file = file_name.replace(".wds", ".img")
-    outf = open(out_file, "w")
+    outf = open(out_file, "wb")
     for sector in track:
-        outf.write(''.join([chr(x) for x in sector]))
+        outf.write(bytes(sector))
     outf.close()
-    print "%s: %d samples, %d clocks (period: %8.5f) %d sectors -> %s" % (re.sub(".*/", "", file_name), len(track.data.samples), len(track.data.data), track.data.period(), len(track), re.sub(".*/", "", out_file))
+    print("%s: %d samples, %d clocks (period: %8.5f) %d sectors -> %s" % (re.sub(".*/", "", file_name), len(track.data.samples), len(track.data.data), track.data.period(), len(track), re.sub(".*/", "", out_file)))
 
 
 # ------------------------------------------------------------------------
@@ -51,7 +51,7 @@ heads = [0, 1, 2, 3]
 # parse command line
 
 if len(sys.argv) < 2:
-    print "Usage: wda2.py <filename.wds>|<session_name [head]>"
+    print("Usage: wda2.py <filename.wds> | <session_name [head]>")
     sys.exit(1)
 if sys.argv[1].endswith(".wds"):
     file_name = sys.argv[1]
@@ -62,12 +62,12 @@ else:
 
 # single-file run
 if file_name is not None:
-    print "Running analysis on single file: %s" % file_name
+    print("Running analysis on single file: %s" % file_name)
     process_file(file_name)
 
 # session run
 else:
-    print "Running analysis on WDS session: %s, heads: %s" % (session_name, ','.join([str(x) for x in heads]))
+    print("Running analysis on WDS session: %s, heads: %s" % (session_name, ','.join([str(x) for x in heads])))
     for cylinder in range(615):
         for head in heads:
             file_name = "%s--1--%03d--%d.wds" % (session_name, cylinder, head)

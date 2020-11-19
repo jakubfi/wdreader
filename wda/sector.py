@@ -79,7 +79,8 @@ class BitSeqFinder:
         self.clock_tick = 0
 
     # --------------------------------------------------------------------
-    def feed(self, (t, v)):
+    def feed(self, s):
+        (t, v) = s
         self.hbit_buf.append(v)
 
         # past the deadline
@@ -124,7 +125,8 @@ class ByteReader:
         self.clock = 0
 
     # --------------------------------------------------------------------
-    def feed(self, (t,v)):
+    def feed(self, s):
+        (t, v) = s
 
         # skip odd bits (clock)
         if self.bit_odd:
@@ -136,12 +138,12 @@ class ByteReader:
 
         # check for illegal MFM bits
         if (v == 1) and (self.clock == 1):
-            print "MFM illegal cell: 11 at: %i" % t
+            print("MFM illegal cell: 11 at: %i" % t)
         elif v == 0:
             if (self.clock == 0) and (self.last_bit == 0):
-                print "MFM illegal cell: 00 after 0 at: %i" % t
+                print("MFM illegal cell: 00 after 0 at: %i" % t)
             elif (self.clock == 1) and (self.last_bit == 1):
-                print "MFM illegal cell: 10 after 1 at: %i" %t
+                print("MFM illegal cell: 10 after 1 at: %i" % t)
 
         # shift in even bits (data)
         self.bytes[self.byte_pos] |= (v << self.bit_pos)
@@ -288,7 +290,7 @@ class SectorWD:
 
         # Phase failed, cooking failed
         elif result == State.FAILED:
-            print "Failed at: %s" % (self.layout[self.phase].name)
+            print("Failed at: %s" % (self.layout[self.phase].name))
             self.phase = 0
             return State.FAILED
 
@@ -415,7 +417,7 @@ class SectorMERA:
 
         # Phase failed, cooking failed
         elif result == State.FAILED:
-            print "Failed at: %s" % (self.layout[self.phase].name)
+            print("Failed at: %s" % (self.layout[self.phase].name))
             self.phase = 0
             return State.FAILED
 

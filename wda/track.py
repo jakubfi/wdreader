@@ -40,7 +40,7 @@ class Track:
 
             if res == State.DONE:
                 if not sector.head_crc_ok or not sector.data_crc_ok:
-                    print "CRC error: %3d/%d/%2d CRC header: %s, CRC data: %s, BAD: %s" % (sector.cylinder, sector.head, sector.sector, str(sector.head_crc_ok), str(sector.data_crc_ok), str(sector.bad))
+                    print("CRC error: %3d/%d/%2d CRC header: %s, CRC data: %s, BAD: %s" % (sector.cylinder, sector.head, sector.sector, str(sector.head_crc_ok), str(sector.data_crc_ok), str(sector.bad)))
 
                 self.sectors[sector.sector] = sector
                 if sector.sector < self.sector_min:
@@ -52,7 +52,7 @@ class Track:
                     sector = self.sector_class(self.sector_size)
 
             elif res == State.FAILED:
-                print "Cooking sector failed"
+                print("Cooking sector failed")
                 break
 
     # --------------------------------------------------------------------
@@ -65,7 +65,7 @@ class Track:
         return self
 
     # --------------------------------------------------------------------
-    def next(self):
+    def __next__(self):
         if self.iter_pos >= len(self.sectors):
             raise StopIteration
         else:

@@ -40,7 +40,7 @@ class MFMData:
         return len(self.data)
 
     # --------------------------------------------------------------------
-    def next(self):
+    def __next__(self):
         if self.pos >= len(self.data):
             raise StopIteration
         else:

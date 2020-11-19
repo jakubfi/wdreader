@@ -28,9 +28,9 @@ class mfm_track:
 
     # -------------------------------------------------------------------
     def __init__(self, fname):
-        print "Loading track image: %s..." % fname
-        f = open(fname, "r")
-        self.data = bytearray(f.read())
+        print("Loading track image: {}...".format(fname))
+        f = open(fname, "rb")
+        self.data = f.read()
         f.close()
 
         self.samples = []
@@ -45,9 +45,10 @@ class mfm_track:
         self.a1_pos = 0
 
         self.crc = Crc(width = 16, poly = 0x1021, reflect_in = False, xor_in = 0xffff, reflect_out = False, xor_out = 0x0000);
-        #self.crc = Crc(width = 16, poly = 0x140a0445, reflect_in = False, xor_in = 0xffffffff, reflect_out = False, xor_out = 0x0000);
+        #self.crc = Crc(width = 32, poly = 0x940a0445, reflect_in = False, xor_in = 0xFFFFFFFF, reflect_out = False, xor_out = 0);
+        #self.crc = Crc(width = 32, poly = 0x140a0445, reflect_in = False, xor_in = 0xFFFFFFFF, reflect_out = False, xor_out = 0);
 
-        print "Unpacking..."
+        print("Unpacking...")
         self.explode()
 
     # -------------------------------------------------------------------
@@ -130,9 +131,9 @@ class mfm_track:
             if (s != ls) and (s == 1):
                 diff = pos-opos
                 self.gaps.append(diff)
-                if (self.gap_hist.has_key(diff)):
+                try:
                     self.gap_hist[diff] += 1
-                else:
+                except KeyError:
                     self.gap_hist[diff] = 1
                 opos = pos
             pos += 1
@@ -170,7 +171,7 @@ class mfm_track:
                     data.append(char)
                 elif b == 2:
                     crc = self.crc.table_driven(''.join([chr(x) for x in data]))
-                    print "%x" % crc
+                    print("%x" % crc)
                     if char == (crc & 0xff00) >> 8:
                         self.samples[clk2][8] = 1
                         crcok = True
@@ -205,33 +206,33 @@ class mfm_track:
         self.clock = []
         self.a1 = []
 
-        print "Regenerating clock..."
+        print("Regenerating clock...")
         self.clock_regen(clock, margin, offset)
 
-        print "Analyzing signal gaps..."
+        print("Analyzing signal gaps...")
         self.calc_gaps()
 
-        print "Looking for sector header/data marks..."
+        print("Looking for sector header/data marks...")
         self.a1_search()
-        print "%i A1 marks found." % len(self.a1)
+        print("{} A1 marks found.".format(len(self.a1)))
 
-        print "Analyzing sectors..."
+        print("Analyzing sectors...")
         count = 0
         while count < len(self.a1):
             try:
                 data, crcok = self.read_bytes(self.a1[count]+1, 6)
-                print ''.join([chr(x) for x in data])
-                print "---- CRC: %s --------------------------------------------------------" % str(crcok)
-            except Exception, e:
-                print str(e)
+                print(''.join([chr(x) for x in data]))
+                print("---- {} bytes, CRC: {} -----------------------------------------------".format(len(data), crcok))
+            except Exception as e:
+                print(e)
                 pass
             count += 1
             try:
                 data, crcok = self.read_bytes(self.a1[count]+1, 512 + 3)
-                print ''.join([chr(x) for x in data])
-                print "---- CRC: %s --------------------------------------------------------" % str(crcok)
-            except Exception, e:
-                print str(e)
+                print(''.join([chr(x) for x in data]))
+                print("---- {} bytes, CRC: {} -----------------------------------------------".format(len(data), crcok))
+            except Exception as e:
+                print(e)
                 pass
             count += 1
 
@@ -288,9 +289,9 @@ class WDA:
 
         xpos = 5
 
-        for p in self.track.gap_hist.keys():
+        for p in sorted(self.track.gap_hist.keys()):
             self.write("%i" % p, (xpos, y+h-15), (255,255,255), 10, False)
-            v = self.track.gap_hist[p]/150
+            v = self.track.gap_hist[p]//100
             if v > h-20:
                 v = h-20
             pygame.draw.rect(self.screen, (0xFF, 0x47, 0x75), (xpos, y+h-15-v, 8, v))
@@ -334,9 +335,9 @@ class WDA:
 
             # draw clock ticks
             if self.track.samples[pos][1]:
-                if ((pos/10)%10) == 0:
+                if ((pos//10)%10) == 0:
                     line(self.screen, x+sx+5, y+11, x+sx+5, y+21, (0x29, 0xFF, 0xEA))
-                    self.write("%i" % (pos/10), (x+sx+5, y+5), (255,255,255), 10, False)
+                    self.write("%i" % (pos//10), (x+sx+5, y+5), (255,255,255), 10, False)
                 line(self.screen, x+sx+5, y+58, x+sx+5, y+61, (0x29, 0xFF, 0xEA))
                 self.write("%i" % self.track.samples[pos][0], (x+sx+3, y+62), (255,255,255), 10, False)
 
@@ -397,12 +398,12 @@ class WDA:
         pygame.draw.rect(self.screen, (0,0,0), (x, y, w, h))
         pygame.draw.rect(self.screen, (255,255,255), (x, y, w, h), 1)
 
-        scale = len(self.track.samples) / (w-x-10)
+        scale = len(self.track.samples) // (w-x-10)
 
         for a1 in self.track.a1:
-            xpos = self.track.clock[a1] / scale
+            xpos = self.track.clock[a1] // scale
             line(self.screen, x+5+xpos, y+1, x+5+xpos, y+h-2, (0xBB, 0x59, 0xD4))
-        line(self.screen, x+5+offset/scale, y+1, x+5+offset/scale, y+h-2, (0xFF, 0xf5, 0x70))
+        line(self.screen, x+5+offset//scale, y+1, x+5+offset//scale, y+h-2, (0xFF, 0xf5, 0x70))
 
     # -------------------------------------------------------------------
     def run(self):
@@ -416,68 +417,71 @@ class WDA:
         self.draw_controls(1, 265, self.win_w-2, 30)
         while not self.quit:
             ev = pygame.event.wait()
+            #print(ev)
+
+            if ev.type == QUIT:
+                self.quit = 1
             # mouse down
-            if ev.type == 5:
+            elif ev.type == MOUSEBUTTONDOWN:
                 # wave drag
                 if ev.pos[1] > 123 and ev.pos[1] < 243:
                     drag = 1
-                if ev.pos[1] > 244 and ev.pos[1] < 264:
-                    offset = (ev.pos[0]-6) * (len(self.track.samples) / (self.win_w-2-1-10))
+                elif ev.pos[1] > 244 and ev.pos[1] < 264:
+                    offset = (ev.pos[0]-6) * (len(self.track.samples) // (self.win_w-2-1-10))
                     self.draw_wave(offset, 1, 123, self.win_w-2, 120)
                     self.draw_nav(offset, 1, 244, self.win_w-2, 20)
                 # controls
                 if ev.pos[1] > 265 and ev.pos[1] < 295 and ev.pos[0] < 414:
                     if ev.pos[0] > 2 and ev.pos[0] < 50:
                         self.clk -= 1
-                    if ev.pos[0] > 54 and ev.pos[0] < 104:
+                    elif ev.pos[0] > 54 and ev.pos[0] < 104:
                         self.clk += 1
-                    if ev.pos[0] > 106 and ev.pos[0] < 156:
+                    elif ev.pos[0] > 106 and ev.pos[0] < 156:
                         self.clk_margin -= 1
-                    if ev.pos[0] > 158 and ev.pos[0] < 208:
+                    elif ev.pos[0] > 158 and ev.pos[0] < 208:
                         self.clk_margin += 1
-                    if ev.pos[0] > 210 and ev.pos[0] < 260:
+                    elif ev.pos[0] > 210 and ev.pos[0] < 260:
                         self.clk_offset -= 1
-                    if ev.pos[0] > 262 and ev.pos[0] < 312:
+                    elif ev.pos[0] > 262 and ev.pos[0] < 312:
                         self.clk_offset += 1
-                    if ev.pos[0] > 314 and ev.pos[0] < 412:
+                    elif ev.pos[0] > 314 and ev.pos[0] < 412:
                         self.track.analyze(self.clk, self.clk_margin, self.clk_offset)
                     self.draw_info(1, 1, self.win_w-2, 20)
                     self.draw_wave(offset, 1, 123, self.win_w-2, 120)
                     self.draw_nav(offset, 1, 244, self.win_w-2, 20)
             # mouse up
-            if ev.type == 6:
+            elif ev.type == MOUSEBUTTONUP:
                 drag = 0
             # mouse pos
-            if ev.type == 4 and drag:
+            elif ev.type == MOUSEMOTION and drag:
                 offset -= ev.rel[0]
                 if offset < 0:
                     offset = 0
                 self.draw_wave(offset, 1, 123, self.win_w-2, 120)
                 self.draw_nav(offset, 1, 244, self.win_w-2, 20)
             # key down
-            if ev.type == 2:
-                if ev.key == 292:
+            elif ev.type == KEYDOWN:
+                if ev.key == K_q:
                     self.quit = 1
-                if ev.key == 275:
+                elif ev.key == K_PAGEDOWN:
                     for a1 in self.track.a1:
                         if self.track.clock[a1] > offset:
                             offset = self.track.clock[a1]
                             break;
-                if ev.key == 276:
+                elif ev.key == K_PAGEUP:
                     apos = len(self.track.a1)-1
                     while apos>0 and self.track.clock[self.track.a1[apos]] >= offset:
                         apos -= 1
                     if apos >= 0:
                         offset = self.track.clock[self.track.a1[apos]]
-                if ev.key == 278:
+                elif ev.key == K_HOME:
                     offset = 0
-                if ev.key == 279:
+                elif ev.key == K_END:
                     offset = len(self.track.samples) - self.win_w
 
                 self.draw_wave(offset, 1, 123, self.win_w-2, 120)
                 self.draw_nav(offset, 1, 244, self.win_w-2, 20)
 
-            #print ev
             pygame.display.flip()
 
 
@@ -489,15 +493,11 @@ filename = ""
 
 try:
     filename = sys.argv[1]
-except Exception, e:
-    print "Usage: wda.py track_image"
+except Exception as e:
+    print("Usage: wda.py track_image")
     sys.exit(1)
 
-try:
-    wda = WDA(filename)
-    wda.run()
-except Exception, e:
-    print "Cannot perform the analysis: %s" % str(e)
-
+wda = WDA(filename)
+wda.run()
 
 # vim: tabstop=4 expandtab shiftwidth=4 softtabstop=4

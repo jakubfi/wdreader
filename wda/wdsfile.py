@@ -20,8 +20,8 @@ class WDSFile:
 
     # --------------------------------------------------------------------
     def __init__(self, wds_file_name):
-        wds_f = open(wds_file_name, "r")
-        self.data = bytearray(wds_f.read())
+        wds_f = open(wds_file_name, "rb")
+        self.data = wds_f.read()
         wds_f.close()
 
         self.byte_pos = 0
@@ -38,7 +38,7 @@ class WDSFile:
         return len(self.data)*8
 
     # --------------------------------------------------------------------
-    def next(self):
+    def __next__(self):
         if self.byte_pos >= len(self.data):
             raise StopIteration
         else:
