@@ -24,7 +24,6 @@ class MFMData:
     def __init__(self, wds_file_name, clock_gen):
         self.samples = WDSFile(wds_file_name)
         self.data = clock_gen.run(self.samples)
-        self.pos = 0
 
     # --------------------------------------------------------------------
     def period(self):
@@ -32,21 +31,11 @@ class MFMData:
 
     # --------------------------------------------------------------------
     def __iter__(self):
-        self.pos = 0
-        return self
+        return iter(self.data)
 
     # --------------------------------------------------------------------
     def __len__(self):
         return len(self.data)
-
-    # --------------------------------------------------------------------
-    def __next__(self):
-        if self.pos >= len(self.data):
-            raise StopIteration
-        else:
-            self.pos += 1
-            return self.data[self.pos-1]
-
 
 # ------------------------------------------------------------------------
 class MFMClockGen:
@@ -57,32 +46,23 @@ class MFMClockGen:
         self.c_margin = c_margin
         self.c_offset = c_offset
 
-        self.last_clock = -100
-
-    # --------------------------------------------------------------------
-    def add_clock(self, ticks, t, v):
-        # remove early inserted clocks
-        if (t - self.last_clock) <= self.c_margin:
-            ticks.pop()
-
-        ticks.append((t + self.c_offset, v))
-        self.last_clock = t
-
     # --------------------------------------------------------------------
     def run(self, samples):
         ticks = []
         ov = 1
         t = 0
+        last_clock = -100
 
         for v in samples:
 
-            # each rising edge restarts clock
-            if (ov == 0) and (v == 1):
-                self.add_clock(ticks, t, v)
+            # a) each rising edge restarts clock
+            # b) if not rising edge, maybe it's time for next tick?
+            if ((ov == 0) and (v == 1)) or (t >= last_clock + self.c_period):
+                if (t - last_clock) <= self.c_margin:
+                    ticks.pop()
 
-            # if not rising edge, maybe it's time for next tick?
-            elif t >= self.last_clock + self.c_period:
-                self.add_clock(ticks, t, v)
+                ticks.append((t + self.c_offset, v))
+                last_clock = t
 
             ov = v
             t += 1
