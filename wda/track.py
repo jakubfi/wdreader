@@ -26,8 +26,6 @@ class Track:
         self.sectors_per_track = sectors_per_track
         self.sector_size = sector_size
         self.sectors = {}
-        self.sector_min = 666
-        self.iter_pos = self.sector_min
         self.sector_class = sector_class
 
         self.data = MFMData(wds_file, clock_gen)
@@ -43,8 +41,6 @@ class Track:
                     print("CRC error: %3d/%d/%2d CRC header: %s, CRC data: %s, BAD: %s" % (sector.cylinder, sector.head, sector.sector, str(sector.head_crc_ok), str(sector.data_crc_ok), str(sector.bad)))
 
                 self.sectors[sector.sector] = sector
-                if sector.sector < self.sector_min:
-                    self.sector_min = sector.sector
 
                 if len(self.sectors) == self.sectors_per_track:
                     break
@@ -61,16 +57,6 @@ class Track:
 
     # --------------------------------------------------------------------
     def __iter__(self):
-        self.iter_pos = self.sector_min
-        return self
-
-    # --------------------------------------------------------------------
-    def __next__(self):
-        if self.iter_pos >= len(self.sectors):
-            raise StopIteration
-        else:
-            self.iter_pos += 1
-            return self.sectors[self.iter_pos-1].data
-
+        return iter(self.sectors)
 
 # vim: tabstop=4 expandtab shiftwidth=4 softtabstop=4

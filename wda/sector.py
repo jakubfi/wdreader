@@ -90,7 +90,7 @@ class BitSeqFinder:
             return State.FAILED
 
         # buffer full
-        if len(self.hbit_buf) == len(self.hbit_seq):
+        elif len(self.hbit_buf) == len(self.hbit_seq):
             # does it match?
             if self.hbit_buf == self.hbit_seq:
                 self.hbit_buf = []
@@ -243,7 +243,7 @@ class SectorWD:
     # --------------------------------------------------------------------
     def callback_head_crc(self, arg):
         crc_read = arg[0]*256 + arg[1]
-        crc_computed = self.crc16_alg.bit_by_bit_fast(''.join([chr(x) for x in self.crc_head_buf]))
+        crc_computed = self.crc16_alg.bit_by_bit_fast(self.crc_head_buf)
         if crc_read == crc_computed:
             self.head_crc_ok = True
 
@@ -266,7 +266,7 @@ class SectorWD:
     # --------------------------------------------------------------------
     def callback_data_crc(self, arg):
         crc_read = arg[0]*16777216 + arg[1]*65536 + arg[2]*256 + arg[3]
-        crc_computed = self.crc32_alg.table_driven(''.join([chr(x) for x in self.crc_data_buf]))
+        crc_computed = self.crc32_alg.table_driven(self.crc_data_buf)
         if crc_read == crc_computed:
             self.data_crc_ok = True
         
@@ -410,7 +410,7 @@ class SectorMERA:
             return
 
         # Phase is done, but we're still cooking
-        if result == State.DONE:
+        elif result == State.DONE:
             self.phase += 1
             self.layout[self.phase].last(self.last_bit)
             return State.COOKING
