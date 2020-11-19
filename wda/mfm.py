@@ -17,6 +17,7 @@
 
 from wdsfile import *
 
+
 # ------------------------------------------------------------------------
 class MFMData:
 
@@ -37,6 +38,7 @@ class MFMData:
     def __len__(self):
         return len(self.data)
 
+
 # ------------------------------------------------------------------------
 class MFMClockGen:
 
@@ -49,7 +51,7 @@ class MFMClockGen:
     # --------------------------------------------------------------------
     def run(self, samples):
         ticks = []
-        ov = 1
+        ov = -1
         t = 0
         last_clock = -100
 
@@ -57,7 +59,7 @@ class MFMClockGen:
 
             # a) each rising edge restarts clock
             # b) if not rising edge, maybe it's time for next tick?
-            if ((ov == 0) and (v == 1)) or (t >= last_clock + self.c_period):
+            if ((v == 1) and (ov == 0)) or (t >= last_clock + self.c_period):
                 if (t - last_clock) <= self.c_margin:
                     ticks.pop()
 
