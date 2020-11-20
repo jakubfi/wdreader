@@ -349,11 +349,12 @@ class WDA:
                 if self.track.samples[pos][8] == 2:
                     color = (0xff, 0x00, 0x00)
                 line(self.screen, x+sx+5, y+74, x+sx+5, y+111, color)
-                if self.track.samples[pos][7] != 0:
-                    ch = chr(self.track.samples[pos][7])
+                chnum = self.track.samples[pos][7]
+                if chnum > 32 and chnum < 127:
+                    ch = '"' + chr(chnum) + '" '
                 else:
-                    ch = " "
-                self.write("0x%02x %s" % (self.track.samples[pos][7], ch), (x+sx-46, y+97), (255,255,255), 12, True)
+                    ch = "    "
+                self.write("%s#%02x" % (ch, chnum), (x+sx-55, y+97), (255,255,255), 12, True)
 
             # draw waveform
             sy = 30 + self.track.samples[pos][0]*-30
