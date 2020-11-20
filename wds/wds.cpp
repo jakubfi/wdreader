@@ -7,6 +7,7 @@
 #include <time.h>
 #include <readline/readline.h>
 #include <readline/history.h>
+#include <stdarg.h>
 
 #include "logic.h"
 #include "wdc.h"
@@ -87,7 +88,7 @@ bool read_track(char *session, int drive, int cylinder, int head)
 	// start reading data
 	dev->ReadStart();
 
-	// wait for at least two full disk revolutions
+	// collect data for at least two full disk revolutions
 	pthread_mutex_lock(&dcount_mutex);
 	while ((data_counter < 7000000) && !device_error) {
 		pthread_cond_wait(&dcount_cv, &dcount_mutex);
@@ -107,7 +108,7 @@ bool read_track(char *session, int drive, int cylinder, int head)
 
 	// dump data to a file
 	char sname[1024];
-	sprintf(sname, "%s--%i--%03i--%i.wds", session, drive, cylinder, head);
+	sprintf(sname, "%s--%03i--%i.wds", session, cylinder, head);
 	int f = open(sname, O_WRONLY | O_EXCL | O_CREAT | O_NOATIME | O_SYNC | O_TRUNC, S_IWUSR | S_IRUSR | S_IRGRP);
 	if (f < 0) {
 		drop_logic_buffers();
@@ -182,11 +183,11 @@ bool dump(int direction)
 			printf(" Seek failed");
 			return false;
 		}
-		// iterate over all tracks
+		// iterate over all heads
 		for (int h=0 ; h<4 ; h++) {
 			res = wdc_set_head(h);
 			if (!res) {
-				printf(" Cannot set head\n");
+				printf(" Cannot select head\n");
 				return false;
 			}
 			// read the track
@@ -201,10 +202,35 @@ bool dump(int direction)
 }
 
 // -----------------------------------------------------------------------
+void usage()
+{
+	printf("Usage: wds -D <device>\n");
+}
+
+// -----------------------------------------------------------------------
 // ---- MAIN -------------------------------------------------------------
 // -----------------------------------------------------------------------
 int main(int argc, char **argv)
 {
+	char *device = NULL;
+	int option;
+	while ((option = getopt(argc, argv, "D:")) != -1) {
+		switch (option) {
+			case 'D':
+				device = optarg;
+				break;
+			default:
+				usage();
+				_Exit(1);
+		}
+	}
+
+	if (!device) {
+		printf("Missing WDS device.\n");
+		usage();
+		_Exit(1);
+	}
+
 	printf("Waiting for Logic interface...\n");
 
 	DevicesManagerInterface::RegisterOnConnect(&OnConnect);
@@ -212,13 +238,13 @@ int main(int argc, char **argv)
 	DevicesManagerInterface::BeginConnect();
 
 	while (!logic_connected) {
-		sleep(1);
+		usleep(100000);
 	}
 
 	printf("Logic ready.\n");
 
 	printf("Opening WDC control connection...\n");
-	wdc_fd = open("/dev/ttyUSB0", O_RDWR | O_NOCTTY | O_NDELAY);
+	wdc_fd = open(device, O_RDWR | O_NOCTTY | O_NDELAY);
 
 	if (wdc_fd == -1) {
 		printf("Cannot open serial port.\n");
