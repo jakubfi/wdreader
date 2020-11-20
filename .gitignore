@@ -1,0 +1,10 @@
+__pycache__
+wdc/*.lst
+wdc/*.o
+wdc/*.out
+wdc/*.map
+wdc/*.hex
+wds/*.wds
+wds/wds
+wds/*.o
+wda/*.pyc
