@@ -118,8 +118,8 @@ class mfm_track:
             a1beg = self.a1_match(self.clock[clk])
             if a1beg:
                 self.a1.append(clk)
-                self.samples[a1beg][2] = 1
-                self.samples[self.clock[clk+1]][2] = 2
+                for i in range(a1beg, self.clock[clk+1]):
+                    self.samples[i][2] = 1
             clk += 1
 
     # -------------------------------------------------------------------
@@ -315,10 +315,6 @@ class WDA:
 
             # draw a1 marks
             if self.track.samples[pos][2] == 1:
-                a1 = True
-            elif self.track.samples[pos][2] == 2:
-                a1 = False
-            if a1:
                 line(self.screen, x+sx+5, y+23, x+sx+5, y+62, (0xA6, 0x1B, 0x9A))
 
             # draw bit cells
