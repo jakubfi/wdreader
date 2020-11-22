@@ -15,18 +15,16 @@
 #  Foundation, Inc.,
 #  51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
-from wdsfile import *
-
 
 # ------------------------------------------------------------------------
 class MFMData:
 
     # --------------------------------------------------------------------
-    def __init__(self, wds_file_name, period, margin, offset):
+    def __init__(self, samples, period, margin, offset):
         self.period = period
         self.margin = margin
         self.offset = offset
-        self.samples = WDSFile(wds_file_name)
+        self.samples = samples
         self.data = self.clock_gen()
 
     # --------------------------------------------------------------------
@@ -46,18 +44,18 @@ class MFMData:
         ticks = []
         ov = -1
         t = 0
-        last_clock = -100
+        next_clock = self.period
 
         for v in self.samples:
-
-            # a) each rising edge restarts clock
-            # b) if not rising edge, maybe it's time for next tick?
-            if ((v == 1) and (ov == 0)) or (t >= last_clock + self.period):
-                if (t - last_clock) <= self.margin:
-                    ticks.pop()
-
+            # each rising edge restarts clock
+            if v and not ov:
                 ticks.append((t + self.offset, v))
-                last_clock = t
+                next_clock = t + self.period
+
+            # if no rising edge, maybe it's time for the next tick?
+            elif t >= next_clock + self.margin:
+                ticks.append((next_clock + self.offset, v))
+                next_clock = next_clock + self.period
 
             ov = v
             t += 1

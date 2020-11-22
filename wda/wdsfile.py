@@ -19,22 +19,14 @@
 class WDSFile:
 
     # --------------------------------------------------------------------
-    def __init__(self, wds_file_name):
-        wds_f = open(wds_file_name, "rb")
-        self.data = wds_f.read()
-        wds_f.close()
-
-        self.bits = []
-        self.extract()
-
-    # --------------------------------------------------------------------
-    def extract(self):
-        bitorder = [x for x in reversed(range(0, 8))]
-        self.bits = [
-            (b >> pos) & 1
-            for b in self.data
-            for pos in bitorder
-        ]
+    def __init__(self, file_name):
+        bitorder = [1<<x for x in reversed(range(0, 8))]
+        with open(file_name, "rb") as f:
+            self.bits = [
+                True if data & bit else False
+                for data in f.read()
+                for bit in bitorder
+            ]
 
     # --------------------------------------------------------------------
     def __iter__(self):

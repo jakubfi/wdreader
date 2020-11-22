@@ -22,7 +22,7 @@ from sector import *
 class Track:
 
     # --------------------------------------------------------------------
-    def __init__(self, wds_file, mfm_data, sector_class, sectors_per_track):
+    def __init__(self, mfm_data, sector_class, sectors_per_track):
         self.data = mfm_data
         self.sector_class = sector_class
         self.sectors_per_track = sectors_per_track

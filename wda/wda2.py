@@ -19,6 +19,7 @@
 
 import sys
 import re
+from wdsfile import *
 from track import *
 from mfm import *
 
@@ -26,8 +27,9 @@ from mfm import *
 # ------------------------------------------------------------------------
 def process_file(file_name):
 
-    mfm_data = MFMData(file_name, period=11, margin=2, offset=0)
-    track = Track(file_name, mfm_data, SectorWD, 17)
+    samples = WDSFile(file_name)
+    mfm_data = MFMData(samples, period=11, margin=2, offset=0)
+    track = Track(mfm_data, SectorWD, 17)
     track.analyze()
 
     # write track image to a file
