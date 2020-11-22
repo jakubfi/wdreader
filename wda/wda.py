@@ -170,7 +170,6 @@ class mfm_track:
                     data.append(char)
                 elif b == 2:
                     crc = self.crc.table_driven(''.join([chr(x) for x in data]))
-                    print("%x" % crc)
                     if char == (crc & 0xff00) >> 8:
                         self.samples[clk2][8] = 1
                         crcok = True
@@ -221,7 +220,7 @@ class mfm_track:
             try:
                 data, crcok = self.read_bytes(self.a1[count]+1, 6)
                 print(''.join([chr(x) for x in data]))
-                print("---- {} bytes, CRC: {} -----------------------------------------------".format(len(data), crcok))
+                print("---- Header: {} bytes, CRC {} -----------------------------------------------".format(len(data), "OK" if crcok else "FAILED"))
             except Exception as e:
                 print(e)
                 pass
@@ -229,7 +228,7 @@ class mfm_track:
             try:
                 data, crcok = self.read_bytes(self.a1[count]+1, 512 + 3)
                 print(''.join([chr(x) for x in data]))
-                print("---- {} bytes, CRC: {} -----------------------------------------------".format(len(data), crcok))
+                print("---- Data: {} bytes, CRC {} -----------------------------------------------".format(len(data), "OK" if crcok else "FAILED"))
             except Exception as e:
                 print(e)
                 pass
