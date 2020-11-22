@@ -22,12 +22,15 @@ from wdsfile import *
 class MFMData:
 
     # --------------------------------------------------------------------
-    def __init__(self, wds_file_name, clock_gen):
+    def __init__(self, wds_file_name, period, margin, offset):
+        self.period = period
+        self.margin = margin
+        self.offset = offset
         self.samples = WDSFile(wds_file_name)
-        self.data = clock_gen.run(self.samples)
+        self.data = self.clock_gen()
 
     # --------------------------------------------------------------------
-    def period(self):
+    def get_period(self):
         return len(self.samples) / len(self.data)
 
     # --------------------------------------------------------------------
@@ -38,32 +41,22 @@ class MFMData:
     def __len__(self):
         return len(self.data)
 
-
-# ------------------------------------------------------------------------
-class MFMClockGen:
-
     # --------------------------------------------------------------------
-    def __init__(self, c_period, c_margin, c_offset):
-        self.c_period = c_period
-        self.c_margin = c_margin
-        self.c_offset = c_offset
-
-    # --------------------------------------------------------------------
-    def run(self, samples):
+    def clock_gen(self):
         ticks = []
         ov = -1
         t = 0
         last_clock = -100
 
-        for v in samples:
+        for v in self.samples:
 
             # a) each rising edge restarts clock
             # b) if not rising edge, maybe it's time for next tick?
-            if ((v == 1) and (ov == 0)) or (t >= last_clock + self.c_period):
-                if (t - last_clock) <= self.c_margin:
+            if ((v == 1) and (ov == 0)) or (t >= last_clock + self.period):
+                if (t - last_clock) <= self.margin:
                     ticks.pop()
 
-                ticks.append((t + self.c_offset, v))
+                ticks.append((t + self.offset, v))
                 last_clock = t
 
             ov = v

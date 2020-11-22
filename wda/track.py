@@ -22,13 +22,12 @@ from sector import *
 class Track:
 
     # --------------------------------------------------------------------
-    def __init__(self, wds_file, clock_gen, sector_class, sectors_per_track, sector_size):
+    def __init__(self, wds_file, mfm_data, sector_class, sectors_per_track, sector_size):
+        self.data = mfm_data
+        self.sector_class = sector_class
         self.sectors_per_track = sectors_per_track
         self.sector_size = sector_size
         self.sectors = {}
-        self.sector_class = sector_class
-
-        self.data = MFMData(wds_file, clock_gen)
 
     # --------------------------------------------------------------------
     def analyze(self):
@@ -41,7 +40,6 @@ class Track:
                     print("CRC error: %3d/%d/%2d CRC header: %s, CRC data: %s, BAD: %s" % (sector.cylinder, sector.head, sector.sector, str(sector.head_crc_ok), str(sector.data_crc_ok), str(sector.bad)))
 
                 self.sectors[sector.sector] = sector
-
                 if len(self.sectors) == self.sectors_per_track:
                     break
                 else:
@@ -57,6 +55,6 @@ class Track:
 
     # --------------------------------------------------------------------
     def __iter__(self):
-        return iter(self.sectors)
+        return iter(self.sectors.items())
 
 # vim: tabstop=4 expandtab shiftwidth=4 softtabstop=4

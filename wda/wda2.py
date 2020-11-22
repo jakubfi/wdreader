@@ -25,17 +25,18 @@ from mfm import *
 # ------------------------------------------------------------------------
 def process_file(file_name):
 
-    track = Track(file_name, MFMClockGen(11, 2, 0), SectorMERA, 17, 512)
+    mfm_data = MFMData(file_name, period=11, margin=2, offset=0)
+    track = Track(file_name, mfm_data, SectorMERA, 17, 512)
     track.analyze()
 
     # write track image to a file
     with open(file_name.replace(".wds", ".img"), "wb") as outf:
-        for sector in track:
+        for num, sector in track:
             outf.write(bytes(sector))
 
     print("{}: clock period: {:.4f} samples, {} sectors".format(
         re.sub(".*/", "", file_name),
-        track.data.period(),
+        track.data.get_period(),
         len(track)
     ))
 

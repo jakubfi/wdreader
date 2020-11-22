@@ -291,6 +291,15 @@ class SectorWD:
             phase = 0
             return State.DONE
 
+    # --------------------------------------------------------------------
+    def __len__(self):
+        return len(self.data)
+
+    # --------------------------------------------------------------------
+    def __bytes__(self):
+        return bytes(self.data)
+
+
 # ------------------------------------------------------------------------
 # Sector format for MERA-400 Intel C82062 based controller
 class SectorMERA:
@@ -411,6 +420,13 @@ class SectorMERA:
             phase = 0
             return State.DONE
 
+    # --------------------------------------------------------------------
+    def __len__(self):
+        return len(self.data)
+
+    # --------------------------------------------------------------------
+    def __bytes__(self):
+        return bytes(self.data)
 
 
 # vim: tabstop=4 expandtab shiftwidth=4 softtabstop=4
