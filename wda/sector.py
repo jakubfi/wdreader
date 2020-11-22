@@ -171,9 +171,8 @@ class ByteReader:
         self.last_bit = bit
 
 
-# ------------------------------------------------------------------------
-# Sector format for WD1006V-MM1 controller
-class SectorWD:
+# --------------------------------------------------------------------
+class MFMSector:
 
     A1 = [0, 1, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1]
     SYNC = [1, 0] * (10*8)
@@ -185,8 +184,8 @@ class SectorWD:
         self.last_bit = 0
         self.crc_head_buf = []
         self.crc_data_buf = []
-        self.crc16_alg = crc_algorithms.Crc(width = 16, poly = 0x1021, reflect_in = False, xor_in = 0xffff, reflect_out = False, xor_out = 0x0000);
-        self.crc32_alg = crc_algorithms.Crc(width = 32, poly = 0x140a0445, reflect_in = False, xor_in = 0xffffffff, reflect_out = False, xor_out = 0x0000);
+        self.crc16_alg = None
+        self.crc32_alg = None
         self.cylinder = 0
         self.head = 0
         self.sector = 0
@@ -199,26 +198,13 @@ class SectorWD:
         self.data = []
 
         self.phase = 0
-        self.layout = [
-            BitSeqFinder("Head SYNC", SectorWD.SYNC, 18*8*2, self.callback_none),
-            BitSeqFinder("Head A1", SectorWD.A1, 3*8*2, self.callback_head_a1),
-            ByteReader("Head data", 4, self.callback_head_data),
-            ByteReader("Head CRC", 2, self.callback_head_crc),
-            Skipper("Gap", 3*8*2),
-            BitSeqFinder("Data Sync", SectorWD.SYNC, 3*8*2, self.callback_none),
-            BitSeqFinder("Data A1", SectorWD.A1, 3*8*2, self.callback_data_a1),
-            ByteReader("Data marker", 1, self.callback_data_marker),
-            ByteReader("Data", sector_size, self.callback_data_data),
-            ByteReader("Data CRC", 4, self.callback_data_crc),
-            Skipper("Gap", 16*8*2),
-            Looper()
-        ]
+        self.layout = []
 
     # --------------------------------------------------------------------
     def callback_head_a1(self, arg):
         self.crc_head_buf = [0xa1]
         self.last_bit = 1
-        
+
     # --------------------------------------------------------------------
     def callback_head_data(self, arg):
         self.crc_head_buf += arg
@@ -233,17 +219,10 @@ class SectorWD:
         self.sector = arg[3]
 
     # --------------------------------------------------------------------
-    def callback_head_crc(self, arg):
-        crc_read = arg[0]*256 + arg[1]
-        crc_computed = self.crc16_alg.table_driven(''.join([chr(x) for x in self.crc_head_buf]))
-        if crc_read == crc_computed:
-            self.head_crc_ok = True
-
-    # --------------------------------------------------------------------
     def callback_data_a1(self, arg):
         self.crc_data_buf = [0xa1]
         self.last_bit = 1
-        
+
     # --------------------------------------------------------------------
     def callback_data_marker(self, arg):
         self.crc_data_buf += arg
@@ -254,143 +233,7 @@ class SectorWD:
         self.crc_data_buf += arg
         self.last_bit = arg[len(arg)-1] & 1
         self.data = arg
-        
-    # --------------------------------------------------------------------
-    def callback_data_crc(self, arg):
-        crc_read = arg[0]*16777216 + arg[1]*65536 + arg[2]*256 + arg[3]
-        crc_computed = self.crc32_alg.table_driven(''.join([chr(x) for x in self.crc_data_buf]))
-        if crc_read == crc_computed:
-            self.data_crc_ok = True
-        
-    # --------------------------------------------------------------------
-    def callback_none(self, arg):
-        pass
 
-    # --------------------------------------------------------------------
-    def feed(self, s):
-        result = self.layout[self.phase].feed(s)
-
-        # Still cooking, get next sample
-        if result == State.COOKING:
-            return
-
-        # Phase is done, but we're still cooking
-        if result == State.DONE:
-            self.phase += 1
-            self.layout[self.phase].last(self.last_bit)
-            return State.COOKING
-
-        # Phase failed, cooking failed
-        elif result == State.FAILED:
-            print("Failed at: %s" % (self.layout[self.phase].name))
-            self.phase = 0
-            return State.FAILED
-
-        # Last phase done, loop over and return success!
-        elif result == State.LOOP_END:
-            phase = 0
-            return State.DONE
-
-    # --------------------------------------------------------------------
-    def __len__(self):
-        return len(self.data)
-
-    # --------------------------------------------------------------------
-    def __bytes__(self):
-        return bytes(self.data)
-
-
-# ------------------------------------------------------------------------
-# Sector format for MERA-400 Intel C82062 based controller
-class SectorMERA:
-
-    A1 = [0, 1, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1]
-    SYNC = [1, 0] * (10*8)
-
-    # --------------------------------------------------------------------
-    def __init__(self, sector_size):
-        self.sector_size = sector_size
-
-        self.last_bit = 0
-        self.crc_head_buf = []
-        self.crc_data_buf = []
-        self.crc16_alg = crc_algorithms.Crc(width = 16, poly = 0x1021, reflect_in = False, xor_in = 0xffff, reflect_out = False, xor_out = 0x0000);
-        self.cylinder = 0
-        self.head = 0
-        self.sector = 0
-        self.sector_size = 0
-        self.bad = False
-
-        self.head_crc_ok = False
-        self.data_crc_ok = False
-
-        self.data = []
-
-        self.phase = 0
-        self.layout = [
-            BitSeqFinder("Head SYNC", SectorMERA.SYNC, 750, self.callback_none),
-            BitSeqFinder("Head A1", SectorMERA.A1, 5*8*2, self.callback_head_a1),
-            ByteReader("Head data", 4, self.callback_head_data),
-            ByteReader("Head CRC", 2, self.callback_head_crc),
-            Skipper("Gap", 60),
-            BitSeqFinder("Data Sync", SectorMERA.SYNC, 5*8*2, self.callback_none),
-            BitSeqFinder("Data A1", SectorMERA.A1, 3*8*2, self.callback_data_a1),
-            ByteReader("Data marker", 1, self.callback_data_marker),
-            ByteReader("Data", sector_size, self.callback_data_data),
-            ByteReader("Data CRC", 2, self.callback_data_crc),
-            Skipper("Gap", 16*8*2),
-            Looper()
-        ]
-
-    # --------------------------------------------------------------------
-    def callback_head_a1(self, arg):
-        self.crc_head_buf = [0xa1]
-        self.last_bit = 1
-        
-    # --------------------------------------------------------------------
-    def callback_head_data(self, arg):
-        self.crc_head_buf += arg
-        self.last_bit = arg[len(arg)-1] & 1
-
-        cyl_msbs = {0xfe: 0, 0xff: 256, 0xfc: 512, 0xfd: 768}
-        self.cylinder = cyl_msbs[arg[0]] + arg[1]
-        self.head = arg[2] & 0b00000111
-        self.sector_size = arg[2] & 0b01100000
-
-        if arg[2] & 0b10000000:
-            self.bad = True
-        self.sector = arg[3]
-
-    # --------------------------------------------------------------------
-    def callback_head_crc(self, arg):
-        crc_read = arg[0]*256 + arg[1]
-        crc_computed = self.crc16_alg.table_driven(''.join([chr(x) for x in self.crc_head_buf]))
-        if crc_read == crc_computed:
-            self.head_crc_ok = True
-
-    # --------------------------------------------------------------------
-    def callback_data_a1(self, arg):
-        self.crc_data_buf = [0xa1]
-        self.last_bit = 1
-        
-    # --------------------------------------------------------------------
-    def callback_data_marker(self, arg):
-        self.crc_data_buf += arg
-        self.last_bit = arg[len(arg)-1] & 1
-
-    # --------------------------------------------------------------------
-    def callback_data_data(self, arg):
-        self.crc_data_buf += arg
-        self.last_bit = arg[len(arg)-1] & 1
-        self.data = arg
-        
-    # --------------------------------------------------------------------
-    def callback_data_crc(self, arg):
-        crc_read = arg[0]*256 + arg[1]
-        crc_computed = self.crc16_alg.table_driven(''.join([chr(x) for x in self.crc_data_buf]))
-        if crc_read == crc_computed:
-            self.data_crc_ok = True
-        
     # --------------------------------------------------------------------
     def callback_none(self, arg):
         pass
@@ -429,4 +272,83 @@ class SectorMERA:
         return bytes(self.data)
 
 
-# vim: tabstop=4 expandtab shiftwidth=4 softtabstop=4
+# --------------------------------------------------------------------
+# Sector format for WD1006V-MM1 controller
+class SectorWD(MFMSector):
+
+    # --------------------------------------------------------------------
+    def __init__(self):
+        sector_size = 512
+        super(SectorWD, self).__init__(sector_size)
+        self.crc16_alg = crc_algorithms.Crc(width = 16, poly = 0x1021, reflect_in = False, xor_in = 0xffff, reflect_out = False, xor_out = 0x0000);
+        self.crc32_alg = crc_algorithms.Crc(width = 32, poly = 0x140a0445, reflect_in = False, xor_in = 0xffffffff, reflect_out = False, xor_out = 0x0000);
+        self.layout = [
+            BitSeqFinder("Head SYNC", MFMSector.SYNC, 18*8*2, self.callback_none),
+            BitSeqFinder("Head A1", MFMSector.A1, 3*8*2, self.callback_head_a1),
+            ByteReader("Head data", 4, self.callback_head_data),
+            ByteReader("Head CRC", 2, self.callback_head_crc),
+            Skipper("Gap", 3*8*2),
+            BitSeqFinder("Data Sync", MFMSector.SYNC, 3*8*2, self.callback_none),
+            BitSeqFinder("Data A1", MFMSector.A1, 3*8*2, self.callback_data_a1),
+            ByteReader("Data marker", 1, self.callback_data_marker),
+            ByteReader("Data", sector_size, self.callback_data_data),
+            ByteReader("Data CRC", 4, self.callback_data_crc),
+            Skipper("Gap", 16*8*2),
+            Looper()
+        ]
+
+   # --------------------------------------------------------------------
+    def callback_head_crc(self, arg):
+        crc_read = arg[0]*256 + arg[1]
+        crc_computed = self.crc16_alg.table_driven(''.join([chr(x) for x in self.crc_head_buf]))
+        if crc_read == crc_computed:
+            self.head_crc_ok = True
+
+    # --------------------------------------------------------------------
+    def callback_data_crc(self, arg):
+        crc_read = arg[0]*16777216 + arg[1]*65536 + arg[2]*256 + arg[3]
+        crc_computed = self.crc32_alg.table_driven(''.join([chr(x) for x in self.crc_data_buf]))
+        if crc_read == crc_computed:
+            self.data_crc_ok = True
+
+
+# --------------------------------------------------------------------
+# Sector format for MERA-400 Intel C82062 based Amepol disk controller
+class SectorAmepol(MFMSector):
+
+    # --------------------------------------------------------------------
+    def __init__(self):
+        sector_size = 512
+        super(SectorAmepol, self).__init__(sector_size)
+
+        self.crc16_alg = crc_algorithms.Crc(width = 16, poly = 0x1021, reflect_in = False, xor_in = 0xffff, reflect_out = False, xor_out = 0x0000);
+
+        self.layout = [
+            BitSeqFinder("Head SYNC", MFMSector.SYNC, 750, self.callback_none),
+            BitSeqFinder("Head A1", MFMSector.A1, 5*8*2, self.callback_head_a1),
+            ByteReader("Head data", 4, self.callback_head_data),
+            ByteReader("Head CRC", 2, self.callback_head_crc),
+            Skipper("Gap", 60),
+            BitSeqFinder("Data Sync", MFMSector.SYNC, 5*8*2, self.callback_none),
+            BitSeqFinder("Data A1", MFMSector.A1, 3*8*2, self.callback_data_a1),
+            ByteReader("Data marker", 1, self.callback_data_marker),
+            ByteReader("Data", sector_size, self.callback_data_data),
+            ByteReader("Data CRC", 2, self.callback_data_crc),
+            Skipper("Gap", 16*8*2),
+            Looper()
+        ]
+
+    # --------------------------------------------------------------------
+    def callback_head_crc(self, arg):
+        crc_read = arg[0]*256 + arg[1]
+        crc_computed = self.crc16_alg.table_driven(''.join([chr(x) for x in self.crc_head_buf]))
+        if crc_read == crc_computed:
+            self.head_crc_ok = True
+
+    # --------------------------------------------------------------------
+    def callback_data_crc(self, arg):
+        crc_read = arg[0]*256 + arg[1]
+        crc_computed = self.crc16_alg.table_driven(''.join([chr(x) for x in self.crc_data_buf]))
+        if crc_read == crc_computed:
+            self.data_crc_ok = True
+

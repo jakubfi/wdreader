@@ -22,11 +22,12 @@ import re
 from track import *
 from mfm import *
 
+
 # ------------------------------------------------------------------------
 def process_file(file_name):
 
     mfm_data = MFMData(file_name, period=11, margin=2, offset=0)
-    track = Track(file_name, mfm_data, SectorMERA, 17, 512)
+    track = Track(file_name, mfm_data, SectorAmepol, 16)
     track.analyze()
 
     # write track image to a file
@@ -52,5 +53,6 @@ if len(sys.argv) != 2:
 file_name = sys.argv[1]
 
 process_file(file_name)
+
 
 # vim: tabstop=4 expandtab shiftwidth=4 softtabstop=4

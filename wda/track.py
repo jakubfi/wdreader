@@ -22,28 +22,34 @@ from sector import *
 class Track:
 
     # --------------------------------------------------------------------
-    def __init__(self, wds_file, mfm_data, sector_class, sectors_per_track, sector_size):
+    def __init__(self, wds_file, mfm_data, sector_class, sectors_per_track):
         self.data = mfm_data
         self.sector_class = sector_class
         self.sectors_per_track = sectors_per_track
-        self.sector_size = sector_size
         self.sectors = {}
 
     # --------------------------------------------------------------------
     def analyze(self):
-        sector = self.sector_class(self.sector_size)
+        sector = self.sector_class()
         for s in self.data:
             res = sector.feed(s)
 
             if res == State.DONE:
-                if not sector.head_crc_ok or not sector.data_crc_ok:
-                    print("CRC error: %3d/%d/%2d CRC header: %s, CRC data: %s, BAD: %s" % (sector.cylinder, sector.head, sector.sector, str(sector.head_crc_ok), str(sector.data_crc_ok), str(sector.bad)))
+                if not sector.head_crc_ok or not sector.data_crc_ok or sector.bad:
+                    print("Sector: {:3}/{}/{:2} - CRC header/data: {}/{}, sector status: {}".format(
+                        sector.cylinder,
+                        sector.head,
+                        sector.sector,
+                        "OK" if sector.head_crc_ok else "FAILED",
+                        "OK" if sector.data_crc_ok else "FAILED",
+                        "FAILED" if sector.bad else "OK"
+                    ))
 
                 self.sectors[sector.sector] = sector
                 if len(self.sectors) == self.sectors_per_track:
                     break
                 else:
-                    sector = self.sector_class(self.sector_size)
+                    sector = self.sector_class()
 
             elif res == State.FAILED:
                 print("Cooking sector failed")
