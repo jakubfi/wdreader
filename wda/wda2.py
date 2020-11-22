@@ -27,7 +27,7 @@ from mfm import *
 def process_file(file_name):
 
     mfm_data = MFMData(file_name, period=11, margin=2, offset=0)
-    track = Track(file_name, mfm_data, SectorAmepol, 16)
+    track = Track(file_name, mfm_data, SectorWD, 17)
     track.analyze()
 
     # write track image to a file
