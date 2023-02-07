@@ -87,7 +87,7 @@ class BitSeqFinder:
         if self.clock_tick > (self.deadline + len(self.hbit_seq)):
             self.hbit_buf = []
             self.clock_tick = 0
-            print("Could not find bit sequence within given deadline")
+            print(" * Could not find bit sequence within given deadline")
             return State.FAILED
 
         # buffer full
@@ -139,12 +139,12 @@ class ByteReader:
 
         # check for illegal MFM bits
         if (v == 1) and (self.clock == 1):
-            print("MFM illegal cell: 11 at sample: {}".format(t))
+            print(" * MFM illegal cell: 11 at sample: {}".format(t))
         elif v == 0:
             if (self.clock == 0) and (self.last_bit == 0):
-                print("MFM illegal cell: 00 after 0 at sample: {}".format(t))
+                print(" * MFM illegal cell: 00 after 0 at sample: {}".format(t))
             elif (self.clock == 1) and (self.last_bit == 1):
-                print("MFM illegal cell: 10 after 1 at sample: {}".format(t))
+                print(" * MFM illegal cell: 10 after 1 at sample: {}".format(t))
 
         # shift in even bits (data)
         self.bytes[self.byte_pos] |= (v << self.bit_pos)
@@ -255,7 +255,7 @@ class MFMSector:
 
         # Phase failed, cooking failed
         elif result == State.FAILED:
-            print("Failed at: {}".format(self.layout[self.phase].name))
+            print(" * Failed at: {}".format(self.layout[self.phase].name))
             self.phase = 0
             return State.FAILED
 

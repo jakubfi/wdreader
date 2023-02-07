@@ -36,7 +36,7 @@ class Track:
 
             if res == State.DONE:
                 if not sector.head_crc_ok or not sector.data_crc_ok or sector.bad:
-                    print("Sector: {:3}/{}/{:2} - CRC header/data: {}/{}, sector status: {}".format(
+                    print(" * Sector: {:3}/{}/{:2} - CRC header/data: {}/{}, sector status: {}".format(
                         sector.cylinder,
                         sector.head,
                         sector.sector,
@@ -52,8 +52,12 @@ class Track:
                     sector = self.sector_class()
 
             elif res == State.FAILED:
-                print("Cooking sector failed")
+                print(" * Cooking sector failed")
                 break
+
+    # --------------------------------------------------------------------
+    def sector(self, num):
+        return self.sectors[num]
 
     # --------------------------------------------------------------------
     def __len__(self):
