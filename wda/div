@@ -1,0 +1,205 @@
+#!/usr/bin/python3
+
+import pygame, sys, os
+from pygame.locals import *
+from pygame.gfxdraw import *
+import argparse
+import m400lib
+
+class DiskImageVisualizer:
+    PREVIEW_NONE = 0
+    PREVIEW_CHR = 1
+    PREVIEW_HEX = 2
+    PREVIEW_R40 = 3
+    PREVIEW_LAST = 4
+
+    def __init__(self, filename, block_size, scale, tick_step, cylinders, heads, sectors):
+        self.block_size = block_size
+        self.scale = scale
+        self.tick_step = tick_step
+        self.cylinders = cylinders
+        self.heads = heads
+        self.sectors = sectors
+
+        self.data = None
+        self.preview = 0
+
+        self.info_height = 24
+        self.win_width = 1920
+        self.data_height = int(self.block_size//2 * self.scale)
+        self.win_height = self.data_height + self.info_height
+        self.total_width = 0  # total width of all surfaces
+
+        self.s = []
+
+        f = open(filename, mode='rb')
+        self.data = f.read()
+        f.close()
+
+        self.pygame_init()
+        self.build_visuals()
+
+    def pygame_init(self):
+        pygame.init()
+        pygame.font.init()
+        window = pygame.display.set_mode((self.win_width, self.win_height))
+        pygame.display.set_caption('Disk Image Visualizer')
+        self.screen = pygame.display.get_surface()
+        pygame.mouse.set_visible(1)
+
+        self.font = pygame.font.Font(pygame.font.match_font("Hack"), 14)
+
+    def surface_from_data(self, data):
+
+        dsurface_width = len(data) // self.block_size
+        dsurface_height = self.block_size//2  # 2 bytes per pixel -> word "color"
+
+        s = pygame.Surface((dsurface_width, dsurface_height))
+
+        for x in range(0, dsurface_width):
+            for y in range(0, dsurface_height):
+                c0 = data[x*512 + 2*y+0]
+                c1 = data[x*512 + 2*y+1]
+                pixel(s, x, y, Color(c1, c1, c0))
+
+        s = pygame.transform.scale(s, (dsurface_width * self.scale, dsurface_height * self.scale))
+
+        return s
+
+    def build_visuals(self):
+        data_chunk = 2000
+        pos = 0
+        while True:
+            ns = self.surface_from_data(self.data[pos:pos + (self.block_size * data_chunk)])
+            self.s.append(ns)
+            self.total_width += ns.get_width()
+            if ns.get_width() < data_chunk:
+                break
+            pos += self.block_size * data_chunk
+
+    def draw_data(self, pixel_offset):
+        offset = int(pixel_offset // self.scale)
+        # clear
+        self.screen.fill(Color(0, 0, 0, 0))
+
+        # draw data
+        surface_offset = 0
+        for surface in self.s:
+            self.screen.blit(surface, (pixel_offset+surface_offset, 0))
+            surface_offset += surface.get_width()
+
+        # data separator
+        line(self.screen, 0, self.data_height, self.win_width, self.data_height, Color(255, 255, 255))
+
+        # draw ticks
+        for x in range(0, self.win_width):
+            pos = (x-pixel_offset) // self.scale
+            if pos % self.tick_step == 0:
+                line(self.screen, x, self.data_height+1, x, self.data_height+20, Color(255, 170, 255))
+
+        # mouse cursor
+        (mx, my) = pygame.mouse.get_pos()
+        line(self.screen, mx, 0, mx, self.win_height, Color(0, 255, 0))
+
+        # mouse position data
+        m_block = int((mx-pixel_offset) / self.scale)
+        m_cyl = m_block // (self.heads * self.sectors)
+        t = m_block % (self.heads * self.sectors)
+        m_head = t // self.sectors
+        m_sector = t % self.sectors
+        text = self.font.render(f"{m_block} ({m_cyl}/{m_head}/{m_sector})", True, Color(255, 255, 255), Color(0, 0, 0, 255))
+        self.screen.blit(text, (mx+5, self.data_height+3))
+
+        # sector preview
+        if self.preview > DiskImageVisualizer.PREVIEW_NONE:
+            if self.preview == DiskImageVisualizer.PREVIEW_HEX:
+                line_len = 32
+            else:
+                line_len = 64
+            line_height = 15
+            sector_data = self.data[m_block*self.block_size:m_block*self.block_size + self.block_size]
+            lines = [sector_data[i*line_len:i*line_len+line_len] for i in range(self.block_size//line_len)]
+            pos = 0
+            for l in lines:
+                if self.preview == DiskImageVisualizer.PREVIEW_CHR:
+                    txt_data = [chr(c) if c >= 32 and c <= 126 else '.' for c in l]
+                elif self.preview == DiskImageVisualizer.PREVIEW_R40:
+                    words = [256*l[2*i] + l[2*i+1] for i in range(0, line_len//2)]
+                    txt_data = [m400lib.r40_triplet(w) for w in words]
+                else:
+                    txt_data = [f"{c:02x} " for c in l]
+                text = self.font.render(''.join(txt_data), True, Color(255, 255, 255), Color(60, 20, 60, 0))
+                self.screen.blit(text, (mx+5, my-5 - line_height * (self.block_size//line_len) + pos))
+                pos += line_height
+
+        pygame.display.flip()
+
+    def run(self):
+
+        pixel_offset = 0
+        quit = False
+        drag = False
+        while not quit:
+            if pixel_offset > 0:
+                pixel_offset = 0
+            if pixel_offset < -(self.total_width - self.win_width):
+                pixel_offset = -(self.total_width - self.win_width)
+
+            self.draw_data(pixel_offset)
+
+            ev = pygame.event.wait()
+
+            if ev.type == QUIT:
+                quit = True
+            elif ev.type == MOUSEBUTTONDOWN:
+                drag = True
+            elif ev.type == MOUSEBUTTONUP:
+                drag = False
+            elif ev.type == MOUSEMOTION and drag:
+                pixel_offset += ev.rel[0]
+            elif ev.type == MOUSEWHEEL:
+                pixel_offset += 100 * ev.y
+            elif ev.type == KEYDOWN:
+                if ev.key == K_q:
+                    quit = True
+                elif ev.key == K_RIGHT:
+                    pixel_offset -= self.scale
+                elif ev.key == K_LEFT:
+                    pixel_offset += self.scale
+                elif ev.key == K_HOME:
+                    pixel_offset = 0
+                elif ev.key == K_END:
+                    pixel_offset = -(self.total_width - self.win_width)
+                elif ev.key == K_PAGEDOWN:
+                    pixel_offset -= self.win_width
+                elif ev.key == K_PAGEUP:
+                    pixel_offset += self.win_width
+                elif ev.key == K_v:
+                    self.preview = (self.preview+1) % DiskImageVisualizer.PREVIEW_LAST
+
+
+parser = argparse.ArgumentParser()
+parser.add_argument("-b", "--block", help="block (sector) size in bytes", default=512, type=int)
+parser.add_argument("-s", "--scale", help="data rendering scale", default=2, type=float)
+parser.add_argument("-t", "--tick", help="tick step", default=None, type=int)
+parser.add_argument("-C", "--cylinders", help="cylinders", default=615, type=int)
+parser.add_argument("-H", "--heads", help="heads", default=4, type=int)
+parser.add_argument("-S", "--sectors", help="sectors per track", default=17, type=int)
+parser.add_argument('image', nargs=1, help='Disk image file to visualize')
+args = parser.parse_args()
+
+if not args.tick:
+    args.tick = args.sectors
+
+dv = DiskImageVisualizer(
+    args.image[0],
+    block_size=args.block,
+    scale=args.scale,
+    tick_step=args.tick,
+    cylinders=args.cylinders,
+    heads=args.heads,
+    sectors=args.sectors
+)
+dv.run()
+
+# vim: tabstop=4 expandtab shiftwidth=4 softtabstop=4
