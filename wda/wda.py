@@ -17,6 +17,7 @@
 #  Foundation, Inc.,
 #  51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
+import math
 import pygame, sys, os
 from pygame.locals import *
 from pygame.gfxdraw import *
@@ -219,16 +220,14 @@ class mfm_track:
         while count < len(self.a1):
             try:
                 data, crcok = self.read_bytes(self.a1[count]+1, 6)
-                print(''.join([chr(x) for x in data]))
-                print("---- Header: {} bytes, CRC {} -----------------------------------------------".format(len(data), "OK" if crcok else "FAILED"))
+                print("Head: {} bytes, CRC {}".format(len(data), "OK" if crcok else "FAILED"))
             except Exception as e:
                 print(e)
                 pass
             count += 1
             try:
                 data, crcok = self.read_bytes(self.a1[count]+1, 512 + 3)
-                print(''.join([chr(x) for x in data]))
-                print("---- Data: {} bytes, CRC {} -----------------------------------------------".format(len(data), "OK" if crcok else "FAILED"))
+                print("Data: {} bytes, CRC {}".format(len(data), "OK" if crcok else "FAILED"))
             except Exception as e:
                 print(e)
                 pass
@@ -285,15 +284,13 @@ class WDA:
         pygame.draw.rect(self.screen, (0,0,0), (x, y, w, h))
         pygame.draw.rect(self.screen, (255,255,255), (x, y, w, h), 1)
 
-        xpos = 5
-
         for p in sorted(self.track.gap_hist.keys()):
-            self.write("%i" % p, (xpos, y+h-15), (255,255,255), 10, False)
-            v = self.track.gap_hist[p]//100
-            if v > h-20:
-                v = h-20
+            xpos = 5 + p*15
+            v = 5.0 * math.log(self.track.gap_hist[p])
+            if v > 0 and v < 1:
+                v = 1
             pygame.draw.rect(self.screen, (0xFF, 0x47, 0x75), (xpos, y+h-15-v, 8, v))
-            xpos += 15
+            self.write("%i" % p, (xpos, y+h-15), (255,255,255), 10, False)
 
     # -------------------------------------------------------------------
     def draw_wave(self, offset, x, y, w, h):
