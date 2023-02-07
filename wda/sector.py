@@ -353,3 +353,43 @@ class SectorAmepol(MFMSector):
         if crc_read == crc_computed:
             self.data_crc_ok = True
 
+# --------------------------------------------------------------------
+# Sector format for MERA-400 WD 2010-based Computex disk controller
+class SectorComputex(MFMSector):
+
+    # --------------------------------------------------------------------
+    def __init__(self):
+        sector_size = 512
+        super(SectorComputex, self).__init__(sector_size)
+
+        self.crc16_alg = crc_algorithms.Crc(width = 16, poly = 0x1021, reflect_in = False, xor_in = 0xffff, reflect_out = False, xor_out = 0x0000);
+        self.crc32_alg = crc_algorithms.Crc(width = 32, poly = 0x140a0445, reflect_in = False, xor_in = 0xffffffff, reflect_out = False, xor_out = 0x0000);
+
+        self.layout = [
+            BitSeqFinder("Head SYNC", MFMSector.SYNC, 750, self.callback_none),
+            BitSeqFinder("Head A1", MFMSector.A1, 5*8*2, self.callback_head_a1),
+            ByteReader("Head data", 4, self.callback_head_data),
+            ByteReader("Head CRC", 2, self.callback_head_crc),
+            Skipper("Gap", 60),
+            BitSeqFinder("Data Sync", MFMSector.SYNC, 5*8*2, self.callback_none),
+            BitSeqFinder("Data A1", MFMSector.A1, 3*8*2, self.callback_data_a1),
+            ByteReader("Data marker", 1, self.callback_data_marker),
+            ByteReader("Data", sector_size, self.callback_data_data),
+            ByteReader("Data CRC", 4, self.callback_data_crc),
+            Skipper("Gap", 16*8*2),
+            Looper()
+        ]
+
+    # --------------------------------------------------------------------
+    def callback_head_crc(self, arg):
+        crc_read = arg[0]*256 + arg[1]
+        crc_computed = self.crc16_alg.bit_by_bit_fast(''.join([chr(x) for x in self.crc_head_buf]))
+        if crc_read == crc_computed:
+            self.head_crc_ok = True
+
+    # --------------------------------------------------------------------
+    def callback_data_crc(self, arg):
+        crc_read = arg[0]*16777216 + arg[1]*65536 + arg[2]*256 + arg[3]
+        crc_computed = self.crc32_alg.bit_by_bit_fast(''.join([chr(x) for x in self.crc_data_buf]))
+        if crc_read == crc_computed:
+            self.data_crc_ok = True
