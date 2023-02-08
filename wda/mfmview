@@ -28,7 +28,7 @@ class mfm_track:
 
     # -------------------------------------------------------------------
     def __init__(self, fname):
-        print("Loading track image: {}...".format(fname))
+        print(f"Loading track image: {fname}")
         f = open(fname, "rb")
         self.data = f.read()
         f.close()
@@ -48,11 +48,11 @@ class mfm_track:
         #self.crc = Crc(width = 32, poly = 0x940a0445, reflect_in = False, xor_in = 0xFFFFFFFF, reflect_out = False, xor_out = 0);
         #self.crc = Crc(width = 32, poly = 0x140a0445, reflect_in = False, xor_in = 0xFFFFFFFF, reflect_out = False, xor_out = 0);
 
-        print("Unpacking...")
         self.explode()
 
     # -------------------------------------------------------------------
     def explode(self):
+        print("Unpacking...")
         for byte in self.data:
             for bit in [7, 6, 5, 4, 3, 2, 1, 0]:
                 v = (byte >> bit) & 1
@@ -213,25 +213,24 @@ class mfm_track:
 
         print("Looking for sector header/data marks...")
         self.a1_search()
-        print("{} A1 marks found.".format(len(self.a1)))
+        print(f"A1 marks found: {len(self.a1)}")
 
         print("Analyzing sectors...")
         count = 0
         while count < len(self.a1):
             try:
                 data, crcok = self.read_bytes(self.a1[count]+1, 6)
-                print("Head: {} bytes, CRC {}".format(len(data), "OK" if crcok else "FAILED"))
             except Exception as e:
                 print(e)
                 pass
             count += 1
             try:
                 data, crcok = self.read_bytes(self.a1[count]+1, 512 + 3)
-                print("Data: {} bytes, CRC {}".format(len(data), "OK" if crcok else "FAILED"))
             except Exception as e:
                 print(e)
                 pass
             count += 1
+        print(f"Chunks found: {count}")
 
 # ------------------------------------------------------------------------
 class WDA:
