@@ -1,4 +1,4 @@
-#  Copyright (c) 2013, 2020 Jakub Filipowicz <jakubf@gmail.com>
+#  Copyright (c) 2013, 2020, 2023 Jakub Filipowicz <jakubf@gmail.com>
 #
 #  This program is free software; you can redistribute it and/or modify
 #  it under the terms of the GNU General Public License as published by
@@ -22,18 +22,15 @@ class WDSFile:
     def __init__(self, file_name):
         bitorder = [1<<x for x in reversed(range(0, 8))]
         with open(file_name, "rb") as f:
-            self.bits = [
+            self.bits = (
                 True if data & bit else False
                 for data in f.read()
                 for bit in bitorder
-            ]
+            )
 
     # --------------------------------------------------------------------
     def __iter__(self):
-        return iter(self.bits)
+        return self.bits
 
-    # --------------------------------------------------------------------
-    def __len__(self):
-        return len(self.bits)
 
 # vim: tabstop=4 expandtab shiftwidth=4 softtabstop=4

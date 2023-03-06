@@ -1,4 +1,4 @@
-#  Copyright (c) 2013, 2020 Jakub Filipowicz <jakubf@gmail.com>
+#  Copyright (c) 2013, 2020, 2023 Jakub Filipowicz <jakubf@gmail.com>
 #
 #  This program is free software; you can redistribute it and/or modify
 #  it under the terms of the GNU General Public License as published by
@@ -25,22 +25,9 @@ class MFMData:
         self.margin = margin
         self.offset = offset
         self.samples = samples
-        self.data = self.clock_gen()
-
-    # --------------------------------------------------------------------
-    def get_period(self):
-        return len(self.samples) / len(self.data)
 
     # --------------------------------------------------------------------
     def __iter__(self):
-        return iter(self.data)
-
-    # --------------------------------------------------------------------
-    def __len__(self):
-        return len(self.data)
-
-    # --------------------------------------------------------------------
-    def clock_gen(self):
         ticks = []
         ov = -1
         t = 0
@@ -49,18 +36,16 @@ class MFMData:
         for v in self.samples:
             # each rising edge restarts clock
             if v and not ov:
-                ticks.append((t + self.offset, v))
+                yield (t + self.offset, v)
                 next_clock = t + self.period
 
             # if no rising edge, maybe it's time for the next tick?
             elif t >= next_clock + self.margin:
-                ticks.append((next_clock + self.offset, v))
+                yield (next_clock + self.offset, v)
                 next_clock = next_clock + self.period
 
             ov = v
             t += 1
-
-        return ticks
 
 
 # vim: tabstop=4 expandtab shiftwidth=4 softtabstop=4
