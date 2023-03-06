@@ -31,19 +31,17 @@ class Track:
     # --------------------------------------------------------------------
     def analyze(self):
         sector = self.sector_class()
+        ret = True
         for s in self.data:
             res = sector.feed(s)
 
             if res == State.DONE:
                 if not sector.head_crc_ok or not sector.data_crc_ok or sector.bad:
-                    print(" * Sector: {:3}/{}/{:2} - CRC header/data: {}/{}, sector status: {}".format(
-                        sector.cylinder,
-                        sector.head,
-                        sector.sector,
-                        "OK" if sector.head_crc_ok else "FAILED",
-                        "OK" if sector.data_crc_ok else "FAILED",
-                        "FAILED" if sector.bad else "OK"
-                    ))
+                    crc_head = "OK" if sector.head_crc_ok else "FAILED"
+                    crc_data = "OK" if sector.data_crc_ok else "FAILED"
+                    status = "FAILED" if sector.bad else "OK"
+                    print(f" * Sector {sector.cylinder}/{sector.head}/{sector.sector:2}: CRC header: {crc_head}, CRC data: {crc_data}, status: {status}")
+                    ret = False
 
                 self.sectors[sector.sector] = sector
                 if len(self.sectors) == self.sectors_per_track:
@@ -54,6 +52,8 @@ class Track:
             elif res == State.FAILED:
                 print(" * Cooking sector failed")
                 break
+
+        return ret
 
     # --------------------------------------------------------------------
     def sector(self, num):

@@ -353,6 +353,7 @@ class SectorAmepol(MFMSector):
         if crc_read == crc_computed:
             self.data_crc_ok = True
 
+
 # --------------------------------------------------------------------
 # Sector format for MERA-400 WD 2010-based Computex disk controller
 class SectorComputex(MFMSector):

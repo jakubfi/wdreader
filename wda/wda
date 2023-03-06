@@ -29,32 +29,38 @@ parser = argparse.ArgumentParser()
 parser.add_argument('track', nargs=1, help='track to analyze')
 parser.add_argument("-f", "--format", help="sector format", required=True)
 parser.add_argument("-s", "--sectors", help="sectors per track", required=True, type=int)
-parser.add_argument("-c", "--clock", help="base clock period (samples)", default=11, type=int)
-parser.add_argument("-m", "--margin", help="clock search margin (samples)", default=2, type=int)
+parser.add_argument("-c", "--clock", help="base clock period (samples)", default=10, type=int)
+parser.add_argument("-m", "--margin", help="clock search margin (samples)", default=4, type=int)
 parser.add_argument("-o", "--offset", help="clock offset (samples)", default=0, type=int)
 parser.add_argument('-v', '--verbose', action='store_true', default=False)
 args = parser.parse_args()
 
 file_name = args.track[0]
-short_fname = re.sub(".*/", "", file_name)
 sector_class = globals()[args.format]
 
 if args.verbose:
-    print(f"Processing file: {short_fname}")
+    print(f"Processing file: {file_name}")
 
 samples = WDSFile(file_name)
 mfm_data = MFMData(samples, period=args.clock, margin=args.margin, offset=args.offset)
 track = Track(mfm_data, sector_class, args.sectors)
-track.analyze()
+sector_status = track.analyze()
 
+missing_sectors = 0
 with open(file_name.replace(".wds", ".img"), "wb") as outf:
     for i in range(0, args.sectors):
         try:
             outf.write(bytes(track.sector(i)))
         except KeyError:
-            print(f" * Sector {i} missing in {file_name}")
             # fill with dummy data
             outf.write(bytes(256 * [0xff, 0]))
+            missing_sectors += 1
+
+if missing_sectors:
+    print(f" * {missing_sectors} sectors missing")
+
+if missing_sectors or not sector_status:
+    sys.exit(1)
 
 
 # vim: tabstop=4 expandtab shiftwidth=4 softtabstop=4
