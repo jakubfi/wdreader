@@ -22,11 +22,12 @@ from sector import *
 class Track:
 
     # --------------------------------------------------------------------
-    def __init__(self, mfm_data, sector_class, sectors_per_track):
+    def __init__(self, mfm_data, sector_class, sectors_per_track, verbosity=0):
         self.data = mfm_data
         self.sector_class = sector_class
         self.sectors_per_track = sectors_per_track
         self.sectors = {}
+        self.verbosity = verbosity
 
     # --------------------------------------------------------------------
     def analyze(self):
@@ -36,12 +37,13 @@ class Track:
             res = sector.feed(s)
 
             if res == State.DONE:
+                crc_head = "OK" if sector.head_crc_ok else "FAILED"
+                crc_data = "OK" if sector.data_crc_ok else "FAILED"
+                status = "FAILED" if sector.bad else "OK"
                 if not sector.head_crc_ok or not sector.data_crc_ok or sector.bad:
-                    crc_head = "OK" if sector.head_crc_ok else "FAILED"
-                    crc_data = "OK" if sector.data_crc_ok else "FAILED"
-                    status = "FAILED" if sector.bad else "OK"
-                    print(f" * Sector {sector.cylinder}/{sector.head}/{sector.sector:2}: CRC header: {crc_head}, CRC data: {crc_data}, status: {status}")
                     ret = False
+                if not sector.head_crc_ok or not sector.data_crc_ok or sector.bad or self.verbosity > 1:
+                    print(f" * Sector {sector.cylinder}/{sector.head}/{sector.sector:2}: CRC header: {crc_head}, CRC data: {crc_data}, status: {status}")
 
                 self.sectors[sector.sector] = sector
                 if len(self.sectors) == self.sectors_per_track:
